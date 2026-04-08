@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply scroll-smooth;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-cosmic text-white overflow-x-hidden;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-nebula rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-aurora rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-divine;
+  }
+  
+  /* Selection color */
+  ::selection {
+    @apply bg-aurora/30 text-white;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl transition-all duration-300;
+  }
+  
+  .glass-card-hover {
+    @apply hover:bg-white/10 hover:border-aurora/50 hover:shadow-2xl hover:shadow-aurora/20;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-aurora to-divine bg-clip-text text-transparent;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-aurora to-divine text-cosmic font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-2xl hover:shadow-aurora/30 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+  
+  .btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300;
+  }
+  
+  /* Animation utilities */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulseSlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-spin-slow {
+    animation: spinSlow 8s linear infinite;
+  }
+  
+  .animate-bounce-slow {
+    animation: bounceSlow 3s infinite;
+  }
+}
+
+@layer utilities {
+  .text-shadow-glow {
+    text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+  }
+  
+  .text-shadow-gold {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+  
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+  
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  
+  .animation-delay-1000 {
+    animation-delay: 1000ms;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(0, 242, 254, 0.3);
+    text-shadow: 0 0 5px rgba(0, 242, 254, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 30px rgba(0, 242, 254, 0.8);
+    text-shadow: 0 0 20px rgba(0, 242, 254, 0.8);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bounceSlow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .glass-card {
+    @apply rounded-xl;
+  }
+  
+  .btn-primary, .btn-secondary {
+    @apply py-2 px-4 text-sm;
+  }
+}
+
+/* Loading animation */
+.loading-pulse {
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* RTL Support for Arabic text */
+.rtl {
+  direction: rtl;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid #00F2FE;
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
