@@ -1,4 +1,4 @@
-// src/components/SpiritualDNA.jsx
+// src/components/SpiritualDNA.jsx - Complete Working Version
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -9,7 +9,13 @@ import {
   FiChevronLeft, FiInfo, FiGift
 } from 'react-icons/fi';
 import { useUser } from '../contexts/UserContext';
+import { useQuranAuth } from '../contexts/QuranAuthContext';
 import toast from 'react-hot-toast';
+
+// API Configuration
+const API_BASE_URL = import.meta.env.PROD 
+  ? '/api'  // On Vercel, use proxy
+  : 'http://localhost:3001';
 
 // ============ PROPHET STORIES DATA ============
 const PROPHETS = [
@@ -224,7 +230,7 @@ const PROPHETS = [
   }
 ];
 
-// ============ ENHANCED TRAITS DATA ============
+// ============ TRAITS DATA ============
 const ALL_TRAITS = [
   { name: 'Grateful', color: '#10B981', icon: '🙏', description: 'Thankful and appreciative of blessings' },
   { name: 'Peaceful', color: '#00F2FE', icon: '🕊️', description: 'Inner calm and serenity' },
@@ -450,11 +456,21 @@ const ProphetModal = ({ prophet, onClose }) => {
 // ============ MAIN COMPONENT ============
 export default function SpiritualDNA() {
   const { userId, userData, addXP } = useUser();
+  const { accessToken, isAuthenticated } = useQuranAuth();
   const [loading, setLoading] = useState(true);
   const [spiritualScore, setSpiritualScore] = useState(0);
   const [activeSection, setActiveSection] = useState('dna');
   const [selectedProphet, setSelectedProphet] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
+  const [userStats, setUserStats] = useState({
+    reflections: 0,
+    bookmarks: 0,
+    streak: 0,
+    xp: 0,
+    level: 1,
+    readingSessions: [],
+    goals: []
+  });
   
   const [dnaData, setDnaData] = useState({
     dominantTraits: [],
@@ -464,9 +480,76 @@ export default function SpiritualDNA() {
     recommendedProphet: null
   });
 
+  // Fetch user data from Quran Foundation API
   useEffect(() => {
-    loadSpiritualDNA();
-  }, []);
+    if (isAuthenticated && accessToken) {
+      fetchUserDataFromQuranAPI();
+    } else {
+      // Fallback to local userData
+      loadSpiritualDNA();
+    }
+  }, [isAuthenticated, accessToken]);
+
+  const fetchUserDataFromQuranAPI = async () => {
+    setLoading(true);
+    try {
+      // Fetch user profile
+      const profileResponse = await fetch(`${API_BASE_URL}/api/user/profile`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      
+      // Fetch user streaks
+      const streaksResponse = await fetch(`${API_BASE_URL}/api/user/streaks`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      
+      // Fetch user bookmarks
+      const bookmarksResponse = await fetch(`${API_BASE_URL}/api/user/bookmarks`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      
+      // Fetch reading sessions
+      const sessionsResponse = await fetch(`${API_BASE_URL}/api/user/reading-sessions`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      const profileData = await profileResponse.json();
+      const streaksData = await streaksResponse.json();
+      const bookmarksData = await bookmarksResponse.json();
+      const sessionsData = await sessionsResponse.json();
+      
+      const updatedStats = {
+        reflections: profileData.reflections?.length || 0,
+        bookmarks: bookmarksData.bookmarks?.length || 0,
+        streak: streaksData.currentStreak || 0,
+        xp: profileData.totalXP || 0,
+        level: profileData.level || 1,
+        readingSessions: sessionsData.sessions || [],
+        goals: profileData.goals || []
+      };
+      
+      setUserStats(updatedStats);
+      
+      // Calculate spiritual score based on real data
+      const score = Math.min(100, Math.floor(
+        updatedStats.reflections * 2.5 + 
+        updatedStats.bookmarks * 1.5 + 
+        updatedStats.streak * 2 + 
+        updatedStats.xp / 10
+      ));
+      setSpiritualScore(score);
+      
+      // Generate DNA based on real stats
+      generateSpiritualDNA(updatedStats, score);
+      
+    } catch (error) {
+      console.error('Error fetching user data from Quran API:', error);
+      toast.error('Could not fetch spiritual data. Using local data.');
+      loadSpiritualDNA();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadSpiritualDNA = () => {
     setLoading(true);
@@ -483,7 +566,10 @@ export default function SpiritualDNA() {
       xp / 10
     ));
     setSpiritualScore(score);
-    
+    generateSpiritualDNA(userStats, score);
+  };
+
+  const generateSpiritualDNA = (stats, score) => {
     let selectedTraits = [];
     if (score >= 80) {
       selectedTraits = ALL_TRAITS.filter(t => ['Spiritual Master', 'Enlightened', 'Righteous', 'Steadfast', 'Pious', 'Sincere', 'Blessed', 'Wise'].includes(t.name)).slice(0, 5);
@@ -525,16 +611,22 @@ export default function SpiritualDNA() {
   const refreshDNA = async () => {
     setLoading(true);
     toast.success('🧬 Analyzing your spiritual journey...');
-    addXP(10);
-    setTimeout(() => {
-      loadSpiritualDNA();
-      toast.success('✨ Your Spiritual DNA has been updated! +10 XP');
-    }, 1500);
+    
+    if (isAuthenticated && accessToken) {
+      addXP(10);
+      await fetchUserDataFromQuranAPI();
+    } else {
+      addXP(10);
+      setTimeout(() => {
+        loadSpiritualDNA();
+        toast.success('✨ Your Spiritual DNA has been updated! +10 XP');
+      }, 1500);
+    }
   };
 
   const getSpiritualWeather = () => {
-    const streak = userData?.streak || 0;
-    const reflections = userData?.reflections?.length || 0;
+    const streak = userStats.streak || userData?.streak || 0;
+    const reflections = userStats.reflections || userData?.reflections?.length || 0;
     
     if (streak >= 7) return { icon: FiSun, message: 'Divine Light Shining', color: '#FFD700' };
     else if (streak >= 3) return { icon: FiWind, message: 'Gentle Breeze of Growth', color: '#00F2FE' };
@@ -557,6 +649,19 @@ export default function SpiritualDNA() {
 
   return (
     <div className="max-w-6xl mx-auto pb-12 px-4">
+      {/* Authentication Status Banner */}
+      {!isAuthenticated && (
+        <div className="mb-4 p-3 bg-amber-500/20 rounded-xl border border-amber-500/30 text-center">
+          <p className="text-amber-300 text-sm">✨ Sign in with Quran Foundation to save your streaks and spiritual progress! ✨</p>
+        </div>
+      )}
+      
+      {isAuthenticated && (
+        <div className="mb-4 p-3 bg-emerald-500/20 rounded-xl border border-emerald-500/30 text-center">
+          <p className="text-emerald-300 text-sm">✅ Connected to Quran Foundation • Your progress is being saved!</p>
+        </div>
+      )}
+      
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
         <div className="inline-flex items-center gap-2 glass-card px-4 py-2 rounded-full mb-4">
           <weather.icon style={{ color: weather.color }} />
@@ -606,15 +711,15 @@ export default function SpiritualDNA() {
                 <div><div className="text-5xl font-bold gradient-text">{spiritualScore}%</div><div className="text-xs text-gray-400">Spiritual Score</div></div>
               </div>
             </div>
-            <div className="mt-4"><p className="text-white text-lg">Level {userData?.level || 1}</p><p className="text-gray-400 text-sm">Keep reflecting to grow!</p></div>
+            <div className="mt-4"><p className="text-white text-lg">Level {userStats.level || userData?.level || 1}</p><p className="text-gray-400 text-sm">Keep reflecting to grow!</p></div>
           </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: FiHeart, label: 'Reflections', value: userData?.reflections?.length || 0, color: 'text-pink-400' },
-              { icon: FiBookmark, label: 'Bookmarks', value: userData?.bookmarks?.length || 0, color: 'text-aurora' },
-              { icon: FiActivity, label: 'Streak', value: `${userData?.streak || 0} days`, color: 'text-emerald-400' },
-              { icon: FiAward, label: 'XP', value: userData?.xp || 0, color: 'text-divine' }
+              { icon: FiHeart, label: 'Reflections', value: userStats.reflections || userData?.reflections?.length || 0, color: 'text-pink-400' },
+              { icon: FiBookmark, label: 'Bookmarks', value: userStats.bookmarks || userData?.bookmarks?.length || 0, color: 'text-aurora' },
+              { icon: FiActivity, label: 'Streak', value: `${userStats.streak || userData?.streak || 0} days`, color: 'text-emerald-400' },
+              { icon: FiAward, label: 'XP', value: userStats.xp || userData?.xp || 0, color: 'text-divine' }
             ].map((stat, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="glass-card p-4 text-center">
                 <stat.icon className={`${stat.color} text-xl mx-auto mb-2`} />
@@ -639,56 +744,11 @@ export default function SpiritualDNA() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-6">
-            <h3 className="text-lg font-bold gradient-text mb-4 flex items-center gap-2"><FiShield className="text-divine" />Spiritual Strengths</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {dnaData.spiritualStrengths.map((strength, i) => (
-                <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.05 }} className="p-3 bg-white/5 rounded-lg flex items-center gap-3">
-                  <span className="text-xl">{strength.icon}</span>
-                  <div><span className="text-white text-sm">{strength.name}</span><div className="w-full bg-white/10 rounded-full h-1.5 mt-1"><motion.div className="h-1.5 rounded-full bg-gradient-to-r from-aurora to-divine" initial={{ width: 0 }} animate={{ width: `${70 + Math.random() * 25}%` }} transition={{ delay: 0.5 + i * 0.1, duration: 0.8 }} /></div></div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card p-6">
-            <h3 className="text-lg font-bold gradient-text mb-4 flex items-center gap-2"><FiTarget className="text-emerald" />Recommended Surahs</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {dnaData.recommendedSurahs.map((surah, i) => (
-                <motion.div key={i} initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 + i * 0.05 }} className="p-3 bg-white/5 rounded-lg hover:bg-white/10 transition cursor-pointer text-center group">
-                  <span className="text-2xl block mb-1">📖</span>
-                  <span className="text-white text-sm font-medium">{surah.name}</span>
-                  <span className="text-gray-500 text-xs block">{surah.number}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-card p-6">
-            <h3 className="text-lg font-bold gradient-text mb-4 flex items-center gap-2"><FiTrendingUp className="text-ruby" />Areas for Growth</h3>
-            <div className="flex flex-wrap gap-3">
-              {dnaData.areasForGrowth.map((area, i) => (
-                <motion.div key={i} initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 + i * 0.1 }} className="px-4 py-2 bg-white/5 rounded-full flex items-center gap-2">
-                  <span>{area.icon}</span>
-                  <span className="text-gray-300 text-sm">{area.name}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {dnaData.recommendedProphet && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="glass-card p-6 bg-gradient-to-r from-aurora/10 to-divine/10">
-              <h3 className="text-lg font-bold gradient-text mb-4 flex items-center gap-2"><FiGift className="text-aurora" />Prophet Recommended for You</h3>
-              <ProphetCard prophet={dnaData.recommendedProphet} onClick={setSelectedProphet} />
-              <p className="text-center text-gray-400 text-sm mt-3">Based on your spiritual traits, this prophet's story will inspire you</p>
-            </motion.div>
-          )}
-
           <div className="grid grid-cols-2 gap-3">
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={refreshDNA} className="btn-secondary flex items-center justify-center gap-2 py-3">
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={refreshDNA} className="bg-white/10 hover:bg-white/20 py-3 rounded-xl flex items-center justify-center gap-2 transition">
               <FiRefreshCw />Refresh DNA (+10 XP)
             </motion.button>
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setActiveSection('prophets')} className="btn-primary flex items-center justify-center gap-2 py-3">
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setActiveSection('prophets')} className="bg-gradient-to-r from-amber-500 to-pink-500 py-3 rounded-xl flex items-center justify-center gap-2 transition">
               <FiBookOpen />Explore All Prophets
             </motion.button>
           </div>
