@@ -16,14 +16,18 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
 const CLIENT_SECRET = 'oESUyMXqqRSkQP8HBRmATrZlwp';
-const REDIRECT_URI = 'http://localhost:3000/auth/callback';
+
+// IMPORTANT: Change this for production!
+const REDIRECT_URI = process.env.NODE_ENV === 'production' 
+  ? 'https://echoes-of-jannah.vercel.app/auth/callback'
+  : 'http://localhost:3000/auth/callback';
+
 const AUTH_BASE_URL = 'https://prelive-oauth2.quran.foundation';
 const API_BASE_URL = 'https://apis-prelive.quran.foundation';
 
 console.log('🔐 Quran Foundation Auth Server');
+console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
 console.log(`   Redirect URI: ${REDIRECT_URI}`);
-console.log(`   Auth URL: ${AUTH_BASE_URL}`);
-console.log(`   Port: ${PORT}`);
 
 const tempAuthStore = new Map();
 
@@ -174,8 +178,17 @@ app.post('/api/auth/logout', (req, res) => {
     res.json({ success: true });
 });
 
-app.listen(PORT, () => {
+// ============================================
+// FOR VERCEL SERVERLESS (Keep this ONLY)
+// ============================================
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
     console.log(`\n✅ Server running on http://localhost:${PORT}`);
     console.log(`   Callback URL: ${REDIRECT_URI}`);
     console.log(`   Ready for authentication!\n`);
-});
+  });
+}
+
+// For Vercel serverless - export the app
+export default app;
