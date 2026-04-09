@@ -58,3 +58,4 @@ Thumbs.db
 *.key
 *.crt
 .secrets/
+.vercel

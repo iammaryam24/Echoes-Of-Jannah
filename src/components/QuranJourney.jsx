@@ -1,12 +1,17 @@
-// QuranJourney.jsx - Complete Mushaf Experience with 300+ Situations
-// Updated: Removed Mushaf tab - Only Situations and Journal
+// QuranJourney.jsx - Fixed Version with correct imports
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiHeart, FiCompass, FiStar, FiBookOpen, FiSearch, FiArrowRight,
-  FiRefreshCw, FiShare2, FiEdit2, FiTrash2, FiBell, FiChevronRight,
-  FiMessageCircle, FiX, FiTrendingUp
+  FiHeart, FiCompass, FiStar, FiClock, FiBookOpen,
+  FiCheckCircle, FiLoader, FiRefreshCw, FiSunrise,
+  FiMoon, FiSmile, FiTrendingUp, FiAward, FiCalendar,
+  FiMap, FiZap, FiGift, FiX, FiMessageCircle, FiFeather,
+  FiEye, FiHome, FiUser, FiBriefcase, FiHeart as FiHeartSolid,
+  FiThumbsUp, FiUsers, FiBookmark, FiShare2, FiInfo,
+  FiArrowRight, FiEdit2, FiTrash2, FiSearch, FiBell,
+  FiChevronRight, FiMenu, FiPlus, FiMinus
+  // FiSparkles doesn't exist in feather icons - removed
 } from 'react-icons/fi';
 import { useUser } from '../contexts/UserContext';
 import toast from 'react-hot-toast';
@@ -104,7 +109,7 @@ const SITUATIONS_LIST = [
 export default function QuranJourney() {
   const { userId, addXP, addCoins } = useUser();
   
-  const [activeTab, setActiveTab] = useState('situations');
+  const [activeTab, setActiveTab] = useState('mushaf');
   const [currentSituation, setCurrentSituation] = useState(null);
   const [currentVerse, setCurrentVerse] = useState(null);
   const [showVerse, setShowVerse] = useState(false);
@@ -185,16 +190,36 @@ export default function QuranJourney() {
 
   const fetchDailyVerse = async () => {
     try {
+      // First get a random surah
       const randomSurah = Math.floor(Math.random() * 114) + 1;
-      const randomVerse = Math.floor(Math.random() * 20) + 1;
-      const response = await fetch(`https://api.alquran.cloud/v1/ayah/${randomSurah}:${randomVerse}/editions/quran-uthmani,en.sahih`);
-      const data = await response.json();
-      if (data.code === 200 && data.data) {
-        const arabicVerse = data.data.find(d => d.edition?.identifier === 'quran-uthmani');
-        const translation = data.data.find(d => d.edition?.identifier === 'en.sahih');
-        setDailyVerse({ surah: randomSurah, verse: randomVerse, arabic: arabicVerse?.text || '', translation: translation?.text || '' });
+      
+      // Get surah info to know how many verses it has
+      const surahResponse = await fetch(`https://api.alquran.cloud/v1/surah/${randomSurah}`);
+      const surahData = await surahResponse.json();
+      
+      if (surahData.code === 200 && surahData.data) {
+        const versesCount = surahData.data.numberOfAyahs;
+        // Pick a valid verse number
+        const randomVerse = Math.floor(Math.random() * versesCount) + 1;
+        
+        // Now fetch the actual verse
+        const response = await fetch(`https://api.alquran.cloud/v1/ayah/${randomSurah}:${randomVerse}/editions/quran-uthmani,en.sahih`);
+        const data = await response.json();
+        
+        if (data.code === 200 && data.data) {
+          const arabicVerse = data.data.find(d => d.edition?.identifier === 'quran-uthmani');
+          const translation = data.data.find(d => d.edition?.identifier === 'en.sahih');
+          setDailyVerse({ 
+            surah: randomSurah, 
+            verse: randomVerse, 
+            arabic: arabicVerse?.text || '', 
+            translation: translation?.text || '' 
+          });
+        }
       }
-    } catch (error) { console.error('Error fetching daily verse:', error); }
+    } catch (error) { 
+      console.error('Error fetching daily verse:', error); 
+    }
   };
 
   const findVerseForSituation = (situation) => {
@@ -277,172 +302,366 @@ export default function QuranJourney() {
     toast.success('Entry deleted');
   };
 
-  const resetSelection = () => {
-    setCurrentSituation(null);
-    setCurrentVerse(null);
-    setShowVerse(false);
-    setShowMoodInput(true);
+  const getCategoryEmoji = (category) => {
+    const emojis = {
+      'all': '📖',
+      'Emotional': '😰',
+      'Spiritual': '🕌',
+      'Relationships': '💕',
+      'Life': '💪',
+      'Grief': '🕊️',
+      'Health': '🩺',
+      'Success': '🏆',
+      'Decisions': '🤲',
+      'Social': '👥',
+      'Forgiveness': '🤝',
+      'Daily': '🌅',
+      'Faith': '❤️'
+    };
+    return emojis[category] || '📖';
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 via-purple-900 to-black text-white">
-      <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 py-6">
+    <div className="min-h-screen w-full relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: `radial-gradient(circle at 20% 30%, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px'
+        }} />
         
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-block px-4 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs mb-3">
-            📖 Mushaf Companion
+        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 w-full px-4 py-4 pb-24 max-w-2xl mx-auto">
+        
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="text-center mb-8"
+        >
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-xl px-5 py-2.5 rounded-full border border-white/20 shadow-xl mb-4">
+            <FiZap className="text-amber-400" size={18} />
+            <span className="text-sm font-medium text-amber-300 tracking-wide">MUSHAF COMPANION</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-amber-400 via-pink-500 to-purple-500 bg-clip-text text-transparent mb-3">
-            Verses That Find You
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-400 via-pink-400 to-purple-400 bg-clip-text text-transparent leading-tight">
+            Verses That<br />Find You
           </h1>
-          <p className="text-md text-gray-300 max-w-2xl mx-auto">
-            "The Quran speaks to your heart exactly when you need it"
+          <p className="text-gray-300/80 text-sm mt-3 max-w-xs mx-auto">
+            The Quran speaks directly to your heart exactly when you need it most
           </p>
-          <div className="flex justify-center gap-2 mt-3">
-            <span className="text-xs bg-white/10 px-3 py-1 rounded-full">📖 {SITUATIONS_LIST.length}+ Situations</span>
-            <span className="text-xs bg-white/10 px-3 py-1 rounded-full">✨ AI-Powered Matching</span>
-            <span className="text-xs bg-white/10 px-3 py-1 rounded-full">💭 Personal Journal</span>
-          </div>
-        </div>
+        </motion.div>
 
-        {/* Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/10">
-            <div className="flex items-center justify-center gap-1">
-              <FiTrendingUp size={14} className="text-orange-400" />
-              <span className="text-xs text-gray-500">Streak</span>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-4 gap-2 mb-6"
+        >
+          {[
+            { icon: FiTrendingUp, value: stats.currentStreak, label: 'Streak', color: 'orange' },
+            { icon: FiStar, value: stats.versesReceived, label: 'Verses', color: 'yellow' },
+            { icon: FiBookOpen, value: stats.reflectionsWritten, label: 'Reflections', color: 'emerald' },
+            { icon: FiCompass, value: stats.situationsExplored, label: 'Moments', color: 'purple' }
+          ].map((stat, i) => (
+            <div key={i} className="bg-white/10 backdrop-blur-xl rounded-2xl p-3 text-center border border-white/10 shadow-lg">
+              <stat.icon className={`text-${stat.color}-400 mx-auto mb-1`} size={18} />
+              <p className="text-white font-bold text-xl">{stat.value}</p>
+              <p className="text-[9px] text-gray-400 uppercase tracking-wider">{stat.label}</p>
             </div>
-            <p className="text-white font-bold text-xl">{stats.currentStreak}</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/10">
-            <FiStar className="text-yellow-400 mx-auto mb-1" size={16} />
-            <p className="text-white font-bold text-xl">{stats.versesReceived}</p>
-            <p className="text-[10px] text-gray-500">Verses</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/10">
-            <FiBookOpen className="text-emerald-400 mx-auto mb-1" size={16} />
-            <p className="text-white font-bold text-xl">{stats.reflectionsWritten}</p>
-            <p className="text-[10px] text-gray-500">Reflections</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center border border-white/10">
-            <FiCompass className="text-purple-400 mx-auto mb-1" size={16} />
-            <p className="text-white font-bold text-xl">{stats.situationsExplored}</p>
-            <p className="text-[10px] text-gray-500">Moments</p>
-          </div>
-        </div>
+          ))}
+        </motion.div>
 
-        {/* Daily Verse Button */}
-        <button onClick={() => setShowDailyVerse(!showDailyVerse)} className="w-full bg-white/10 backdrop-blur-sm rounded-xl p-3 mb-5 flex items-center justify-between border border-amber-400/20 hover:bg-white/15 transition">
-          <div className="flex items-center gap-2">
-            <FiBell size={16} className="text-amber-400" />
-            <span className="text-sm text-white">Verse of the Day</span>
+        <motion.button 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onClick={() => setShowDailyVerse(!showDailyVerse)} 
+          className="w-full bg-gradient-to-r from-amber-500/10 to-pink-500/10 backdrop-blur-xl rounded-2xl p-4 mb-5 flex items-center justify-between border border-amber-400/20 shadow-lg hover:shadow-amber-400/10 transition-all duration-300"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center">
+              <FiBell size={20} className="text-amber-400" />
+            </div>
+            <div className="text-left">
+              <span className="text-sm font-medium text-white">Verse of the Day</span>
+              <p className="text-[10px] text-gray-400">Daily inspiration for your soul</p>
+            </div>
           </div>
-          <FiChevronRight size={14} className="text-gray-400" />
-        </button>
+          <FiChevronRight size={18} className="text-gray-400" />
+        </motion.button>
 
         <AnimatePresence>
           {showDailyVerse && dailyVerse && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-5 overflow-hidden border border-amber-400/20">
-              <p className="font-arabic text-right text-base text-gray-200">{dailyVerse.arabic}</p>
-              <p className="text-gray-300 text-xs mt-2">{dailyVerse.translation}</p>
-              <p className="text-amber-400 text-[10px] mt-2">Surah {dailyVerse.surah}, Verse {dailyVerse.verse}</p>
+            <motion.div 
+              initial={{ opacity: 0, height: 0, scale: 0.95 }}
+              animate={{ opacity: 1, height: 'auto', scale: 1 }}
+              exit={{ opacity: 0, height: 0, scale: 0.95 }}
+              className="bg-gradient-to-br from-amber-900/20 to-pink-900/20 backdrop-blur-xl rounded-2xl p-5 mb-5 overflow-hidden border border-amber-400/20 shadow-xl"
+            >
+              <p className="font-arabic text-right text-lg text-gray-200 leading-loose">{dailyVerse.arabic}</p>
+              <div className="h-px bg-gradient-to-r from-transparent via-amber-400/30 to-transparent my-3" />
+              <p className="text-gray-300 text-sm italic">"{dailyVerse.translation}"</p>
+              <p className="text-amber-400 text-xs mt-3 font-medium">Surah {dailyVerse.surah}, Verse {dailyVerse.verse}</p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Mood Input */}
         <AnimatePresence>
-          {showMoodInput && !currentSituation && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-amber-400/30 text-center">
-              <div className="text-6xl mb-4">📖</div>
-              <h2 className="text-xl font-semibold text-white mb-2">How is your heart today?</h2>
-              <p className="text-gray-400 text-sm mb-5">Share what you're feeling, and the Quran will speak to you</p>
-              <form onSubmit={handleMoodSubmit} className="flex gap-3">
-                <input type="text" value={userMood} onChange={(e) => setUserMood(e.target.value)} placeholder="e.g., I feel lost, my heart is heavy, I need peace..." className="flex-1 px-4 py-3 bg-white/10 rounded-xl text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400" autoFocus />
-                <button type="submit" className="px-5 py-3 bg-gradient-to-r from-amber-500 to-pink-500 rounded-xl text-sm font-medium"><FiArrowRight size={18} /></button>
+          {showMoodInput && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-gradient-to-br from-purple-900/30 to-pink-900/30 backdrop-blur-xl rounded-3xl p-6 mb-6 border border-white/20 shadow-2xl text-center"
+            >
+              <div className="text-7xl mb-4 animate-bounce">📖</div>
+              <h2 className="text-2xl font-bold text-white mb-2">How is your heart?</h2>
+              <p className="text-gray-300 text-sm mb-6">Share what you're feeling, and let the Quran speak to you</p>
+              <form onSubmit={handleMoodSubmit} className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={userMood} 
+                  onChange={(e) => setUserMood(e.target.value)} 
+                  placeholder="e.g., I feel anxious, my heart is heavy..." 
+                  className="flex-1 px-4 py-3.5 bg-white/10 backdrop-blur rounded-2xl text-white text-sm placeholder-gray-400 border border-white/10 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all" 
+                  autoFocus 
+                />
+                <button 
+                  type="submit" 
+                  className="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-pink-500 rounded-2xl text-sm font-medium shadow-lg hover:shadow-amber-500/30 transition-all duration-300"
+                >
+                  <FiArrowRight size={20} />
+                </button>
               </form>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Verse Display when situation is selected */}
-        <AnimatePresence>
-          {currentSituation && currentVerse && showVerse && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="mb-6">
-              <div className="bg-gradient-to-br from-amber-900/30 to-pink-900/30 backdrop-blur-sm rounded-2xl p-6 border border-amber-400/30 text-center relative overflow-hidden">
-                <button onClick={resetSelection} className="absolute top-4 right-4 text-gray-400 hover:text-white"><FiX size={20} /></button>
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-400/10 to-pink-500/10 rounded-full blur-3xl" />
-                <div className="relative z-10">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <span className="text-3xl">{currentSituation.emoji}</span>
-                    <span className="text-sm text-amber-400">{currentSituation.title}</span>
-                  </div>
-                  <div className="text-right mb-5"><p className="font-arabic text-2xl md:text-3xl leading-loose text-gray-200">{currentVerse.arabic}</p></div>
-                  <div className="border-t border-amber-400/20 pt-4"><p className="text-gray-300 text-sm leading-relaxed">"{currentVerse.translation}"</p></div>
-                  <div className="flex justify-between items-center mt-5">
-                    <span className="text-xs text-amber-400">Surah {currentVerse.surah}, Verse {currentVerse.verse}</span>
-                    <div className="flex gap-2">
-                      <button onClick={getNewVerse} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition"><FiRefreshCw size={14} className="text-gray-400" /></button>
-                      <button onClick={shareVerse} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition"><FiShare2 size={14} className="text-gray-400" /></button>
-                      <button onClick={() => setShowReflection(true)} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition"><FiEdit2 size={14} className="text-gray-400" /></button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {showReflection && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mt-3 overflow-hidden">
-                    <h4 className="text-sm font-semibold text-white mb-3">Write your reflection</h4>
-                    <textarea value={reflectionText} onChange={(e) => setReflectionText(e.target.value)} placeholder="How does this verse speak to your heart? What will you do differently?" className="w-full p-3 bg-white/5 rounded-xl text-sm text-gray-300 placeholder-gray-500 border border-white/10 focus:border-amber-400/50 focus:outline-none resize-none" rows="4" />
-                    <div className="flex justify-end gap-3 mt-3">
-                      <button onClick={() => setShowReflection(false)} className="px-4 py-2 bg-white/10 rounded-lg text-sm">Cancel</button>
-                      <button onClick={saveReflection} className="px-4 py-2 bg-gradient-to-r from-amber-500 to-pink-500 rounded-lg text-sm font-medium">Save +25 XP</button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mt-3">
-                <div className="flex items-center gap-2 mb-2"><FiMessageCircle size={14} className="text-amber-400" /><h4 className="text-sm font-semibold text-amber-400">Reflection</h4></div>
-                <p className="text-gray-300 text-sm leading-relaxed">{currentSituation.reflection}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Tab Navigation - Only 2 tabs */}
-        <div className="flex gap-2 bg-white/5 rounded-xl p-1 mb-6">
-          <button onClick={() => setActiveTab('situations')} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'situations' ? 'bg-gradient-to-r from-amber-500 to-pink-500 text-white shadow-lg' : 'text-gray-400'}`}><FiCompass size={14} /> Situations</button>
-          <button onClick={() => setActiveTab('journal')} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'journal' ? 'bg-gradient-to-r from-amber-500 to-pink-500 text-white shadow-lg' : 'text-gray-400'}`}><FiBookOpen size={14} /> Journal</button>
+        <div className="flex gap-1.5 bg-white/5 backdrop-blur-xl rounded-2xl p-1.5 mb-6 border border-white/10">
+          {[
+            { id: 'mushaf', icon: FiHeart, label: 'Mushaf' },
+            { id: 'situations', icon: FiCompass, label: 'Situations' },
+            { id: 'journal', icon: FiBookOpen, label: 'Journal' }
+          ].map(tab => (
+            <button 
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)} 
+              className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                activeTab === tab.id 
+                  ? 'bg-gradient-to-r from-amber-500 to-pink-500 text-white shadow-lg scale-105' 
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <tab.icon size={16} />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Situations Tab */}
+        {activeTab === 'mushaf' && (
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+            {currentSituation ? (
+              <>
+                <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-amber-400/20 shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-amber-400/20 flex items-center justify-center text-3xl">
+                      {currentSituation.emoji}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-semibold text-white">{currentSituation.title}</h3>
+                      <p className="text-xs text-amber-400/80">{currentSituation.category}</p>
+                    </div>
+                    <button 
+                      onClick={() => { setCurrentSituation(null); setCurrentVerse(null); setShowVerse(false); setShowMoodInput(true); }} 
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
+                    >
+                      <FiX size={16} className="text-gray-400" />
+                    </button>
+                  </div>
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {showVerse && currentVerse && (
+                    <motion.div 
+                      key={currentVerse.surah + currentVerse.verse}
+                      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -30, scale: 0.95 }}
+                      className="bg-gradient-to-br from-amber-900/30 via-purple-900/30 to-pink-900/30 backdrop-blur-xl rounded-3xl p-6 border border-amber-400/30 shadow-2xl relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-amber-400/10 to-pink-500/10 rounded-full blur-3xl" />
+                      <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-purple-500/10 to-amber-400/10 rounded-full blur-3xl" />
+                      
+                      <div className="relative z-10">
+                        <div className="inline-block px-3 py-1 rounded-full bg-amber-400/20 text-amber-400 text-xs mb-4">
+                          Surah {currentVerse.surah}
+                        </div>
+                        
+                        <div className="text-right mb-6">
+                          <p className="font-arabic text-2xl md:text-3xl leading-[2.2] text-gray-100">
+                            {currentVerse.arabic}
+                          </p>
+                        </div>
+                        
+                        <div className="border-t border-amber-400/20 pt-5">
+                          <p className="text-gray-200 text-base leading-relaxed italic">
+                            "{currentVerse.translation}"
+                          </p>
+                        </div>
+                        
+                        <div className="flex justify-between items-center mt-6">
+                          <span className="text-xs text-amber-400/80 font-medium">
+                            Verse {currentVerse.verse}
+                          </span>
+                          <div className="flex gap-1">
+                            <button 
+                              onClick={getNewVerse} 
+                              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition flex items-center justify-center"
+                            >
+                              <FiRefreshCw size={16} className="text-gray-300" />
+                            </button>
+                            <button 
+                              onClick={shareVerse} 
+                              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition flex items-center justify-center"
+                            >
+                              <FiShare2 size={16} className="text-gray-300" />
+                            </button>
+                            <button 
+                              onClick={() => setShowReflection(true)} 
+                              className="w-9 h-9 rounded-full bg-gradient-to-r from-amber-500 to-pink-500 hover:shadow-lg hover:shadow-amber-500/30 transition flex items-center justify-center"
+                            >
+                              <FiEdit2 size={16} className="text-white" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {showReflection && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-white/10 backdrop-blur-xl rounded-2xl p-5 overflow-hidden border border-white/20 shadow-lg"
+                    >
+                      <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                        <FiFeather className="text-amber-400" />
+                        Your Reflection
+                      </h4>
+                      <textarea 
+                        value={reflectionText} 
+                        onChange={(e) => setReflectionText(e.target.value)} 
+                        placeholder="How does this verse speak to your heart? What will you do differently?" 
+                        className="w-full p-4 bg-white/5 rounded-xl text-sm text-gray-200 placeholder-gray-500 border border-white/10 focus:border-amber-400/50 focus:outline-none resize-none" 
+                        rows="4" 
+                      />
+                      <div className="flex justify-end gap-2 mt-4">
+                        <button 
+                          onClick={() => setShowReflection(false)} 
+                          className="px-4 py-2 bg-white/10 rounded-xl text-sm hover:bg-white/20 transition"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={saveReflection} 
+                          className="px-5 py-2 bg-gradient-to-r from-amber-500 to-pink-500 rounded-xl text-sm font-medium shadow-lg hover:shadow-amber-500/30 transition"
+                        >
+                          Save +25 XP
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="bg-gradient-to-r from-amber-500/10 to-pink-500/10 backdrop-blur-xl rounded-2xl p-5 border border-amber-400/20 shadow-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-400/20 flex items-center justify-center">
+                      <FiMessageCircle size={16} className="text-amber-400" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-amber-400">Spiritual Guidance</h4>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed">{currentSituation.reflection}</p>
+                </div>
+              </>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-16"
+              >
+                <div className="text-8xl mb-6" style={{ animation: 'float 3s ease-in-out infinite' }}>📖</div>
+                <h3 className="text-white font-bold text-xl mb-3">Let the Quran Speak to You</h3>
+                <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+                  Share how you're feeling above, or browse through {SITUATIONS_LIST.length}+ life situations
+                </p>
+                <button 
+                  onClick={() => setActiveTab('situations')} 
+                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-pink-500 rounded-xl text-sm font-medium shadow-lg hover:shadow-amber-500/30 transition-all duration-300"
+                >
+                  Browse Situations →
+                </button>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
         {activeTab === 'situations' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
             <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={`Search ${SITUATIONS_LIST.length}+ situations...`} className="w-full pl-10 pr-4 py-3 bg-white/10 rounded-xl text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <input 
+                type="text" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                placeholder={`Search ${SITUATIONS_LIST.length}+ situations...`} 
+                className="w-full pl-12 pr-4 py-3.5 bg-white/10 backdrop-blur-xl rounded-2xl text-white text-sm placeholder-gray-400 border border-white/10 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all" 
+              />
             </div>
             
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-              {categories.slice(0, 15).map(cat => (
-                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition flex items-center gap-1 ${selectedCategory === cat ? 'bg-amber-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>
-                  <span>{cat === 'all' ? '📖' : cat === 'Emotional' ? '😰' : cat === 'Spiritual' ? '🕌' : cat === 'Relationships' ? '💕' : cat === 'Life' ? '💪' : cat === 'Grief' ? '🕊️' : cat === 'Health' ? '🩺' : cat === 'Success' ? '🏆' : cat === 'Decisions' ? '🤲' : cat === 'Social' ? '👥' : cat === 'Forgiveness' ? '🤝' : cat === 'Daily' ? '🌅' : cat === 'Faith' ? '❤️' : '📖'}</span>
+            <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar">
+              {categories.map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setSelectedCategory(cat)} 
+                  className={`px-4 py-2 rounded-full text-xs whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    selectedCategory === cat 
+                      ? 'bg-gradient-to-r from-amber-500 to-pink-500 text-white shadow-lg' 
+                      : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'
+                  }`}
+                >
+                  <span>{getCategoryEmoji(cat)}</span>
                   <span>{cat === 'all' ? 'All' : cat}</span>
                 </button>
               ))}
             </div>
 
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1 custom-scroll">
-              <p className="text-xs text-gray-500 px-1">{filteredSituations.length} situations found</p>
+            <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1 custom-scroll">
+              <p className="text-xs text-gray-400 px-1 py-2">
+                {filteredSituations.length} situations found
+              </p>
               {filteredSituations.map((situation, idx) => (
-                <motion.button key={situation.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(idx * 0.002, 0.2) }} onClick={() => handleSituationSelect(situation)} className="w-full bg-white/10 backdrop-blur-sm rounded-xl p-4 text-left hover:border-amber-400/30 transition-all border border-white/10">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{situation.emoji}</span>
-                    <div className="flex-1"><h4 className="text-sm font-semibold text-white">{situation.title}</h4><p className="text-[10px] text-gray-400">{situation.category}</p></div>
-                    <FiArrowRight size={16} className="text-gray-500" />
+                <motion.button 
+                  key={situation.id} 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.01 }}
+                  onClick={() => { handleSituationSelect(situation); setActiveTab('mushaf'); }} 
+                  className="w-full bg-white/10 backdrop-blur-xl rounded-2xl p-4 text-left hover:bg-white/15 transition-all border border-white/10 hover:border-amber-400/30 shadow-md hover:shadow-lg group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400/20 to-pink-500/20 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                      {situation.emoji}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition">{situation.title}</h4>
+                      <p className="text-[10px] text-gray-400">{situation.category}</p>
+                    </div>
+                    <FiArrowRight size={18} className="text-gray-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
                   </div>
                 </motion.button>
               ))}
@@ -450,33 +669,92 @@ export default function QuranJourney() {
           </motion.div>
         )}
 
-        {/* Journal Tab */}
         {activeTab === 'journal' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-            <div className="flex justify-between items-center"><h3 className="text-base font-semibold text-amber-400">Your Spiritual Journal</h3><p className="text-xs text-gray-500">{journalEntries.length} entries</p></div>
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+            <div className="flex justify-between items-center px-1">
+              <div className="flex items-center gap-2">
+                <FiBookOpen className="text-amber-400" size={18} />
+                <h3 className="text-base font-semibold text-white">Your Journal</h3>
+              </div>
+              <p className="text-xs bg-white/10 px-3 py-1 rounded-full text-gray-300">
+                {journalEntries.length} entries
+              </p>
+            </div>
+            
             {journalEntries.length === 0 ? (
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-10 text-center border border-white/10"><div className="text-6xl mb-4">📔</div><p className="text-gray-400 text-sm">Your journal is empty</p><p className="text-gray-500 text-xs mt-1">Save reflections when verses find you</p></div>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-white/10 backdrop-blur-xl rounded-3xl p-12 text-center border border-white/10"
+              >
+                <div className="text-7xl mb-5 opacity-50">📔</div>
+                <p className="text-gray-300 text-base mb-2">Your journal is empty</p>
+                <p className="text-gray-500 text-sm mb-6">Save reflections when verses find you</p>
+                <button 
+                  onClick={() => setActiveTab('situations')} 
+                  className="text-amber-400 text-sm font-medium hover:text-amber-300 transition"
+                >
+                  Browse situations →
+                </button>
+              </motion.div>
             ) : (
-              journalEntries.map(entry => (
-                <motion.div key={entry.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                  <div className="flex items-center gap-3 mb-2"><span className="text-2xl">{entry.situationEmoji}</span><div className="flex-1"><h4 className="text-sm font-semibold text-white">{entry.situation}</h4><p className="text-[10px] text-gray-500">{new Date(entry.date).toLocaleDateString()}</p></div><button onClick={() => deleteJournalEntry(entry.id)} className="text-gray-500 hover:text-red-400"><FiTrash2 size={14} /></button></div>
-                  <div className="bg-white/5 rounded-lg p-3 mb-2"><p className="font-arabic text-right text-sm text-gray-200">{entry.verse.arabic}</p><p className="text-gray-400 text-[10px] mt-1">{entry.verse.translation}</p><p className="text-amber-400 text-[9px] mt-1">Surah {entry.verse.surah}, Verse {entry.verse.verse}</p></div>
-                  <p className="text-gray-300 text-xs leading-relaxed">{entry.reflection}</p>
-                </motion.div>
-              ))
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 custom-scroll">
+                {journalEntries.map(entry => (
+                  <motion.div 
+                    key={entry.id} 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/10 shadow-lg"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-2xl">{entry.situationEmoji}</span>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-white">{entry.situation}</h4>
+                        <p className="text-[10px] text-gray-400">
+                          {new Date(entry.date).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => deleteJournalEntry(entry.id)} 
+                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 transition flex items-center justify-center group"
+                      >
+                        <FiTrash2 size={14} className="text-gray-400 group-hover:text-red-400" />
+                      </button>
+                    </div>
+                    <div className="bg-gradient-to-r from-amber-500/5 to-pink-500/5 rounded-xl p-4 mb-3 border border-white/5">
+                      <p className="font-arabic text-right text-sm text-gray-200 mb-2">{entry.verse.arabic}</p>
+                      <p className="text-gray-400 text-xs italic">"{entry.verse.translation}"</p>
+                      <p className="text-amber-400/80 text-[10px] mt-2 font-medium">
+                        Surah {entry.verse.surah}, Verse {entry.verse.verse}
+                      </p>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed pl-1">{entry.reflection}</p>
+                  </motion.div>
+                ))}
+              </div>
             )}
           </motion.div>
         )}
-        
       </div>
 
       <style>{`
-        .font-arabic { font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'Noto Naskh Arabic', serif; }
+        .font-arabic { 
+          font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'Noto Naskh Arabic', serif; 
+        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #f59e0b, #ec4899); border-radius: 10px; }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
       `}</style>
     </div>
   );

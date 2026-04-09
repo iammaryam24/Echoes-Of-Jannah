@@ -1,4 +1,4 @@
-// src/components/QuranBrowser.jsx - COMPLETE WITH AUDIO & CENTERED CYAN HEADING
+// src/components/QuranBrowser.jsx - COMPLETE WITH WORKING AUDIO
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -7,7 +7,7 @@ import {
   FiChevronRight, FiVolume2, FiClock, FiGrid,
   FiList, FiPlay, FiPause, FiCopy, FiCheck,
   FiArrowUp, FiMaximize, FiMinimize, FiHeadphones,
-  FiVolumeX
+  FiVolumeX, FiZap
 } from 'react-icons/fi';
 import { useUser } from '../contexts/UserContext';
 import toast from 'react-hot-toast';
@@ -23,12 +23,12 @@ const surahGradients = [
   'from-indigo-500/20 to-purple-500/20',
 ];
 
-// Audio reciters available
+// Audio reciters available with working URLs
 const reciters = [
-  { id: 'ar.alafasy', name: 'Mishary Alafasy' },
-  { id: 'ar.abdurrahmaansudais', name: 'Abdurrahman Sudais' },
-  { id: 'ar.hudhaify', name: 'Ali Hudhaify' },
-  { id: 'ar.mahermuaiqly', name: 'Maher Al-Muaiqly' },
+  { id: 'ar.alafasy', name: 'Mishary Alafasy', baseUrl: 'https://everyayah.com/data/Alafasy_128kbps/' },
+  { id: 'ar.abdurrahmaansudais', name: 'Abdurrahman Sudais', baseUrl: 'https://everyayah.com/data/Abdurrahmaan_As-Sudais_192kbps/' },
+  { id: 'ar.hudhaify', name: 'Ali Hudhaify', baseUrl: 'https://everyayah.com/data/hudhaify_64kbps/' },
+  { id: 'ar.mahermuaiqly', name: 'Maher Al-Muaiqly', baseUrl: 'https://everyayah.com/data/MaherAlMuaiqly128kbps/' },
 ];
 
 export default function QuranBrowser() {
@@ -56,8 +56,10 @@ export default function QuranBrowser() {
   const [selectedReciter, setSelectedReciter] = useState('ar.alafasy');
   const [showReciterMenu, setShowReciterMenu] = useState(false);
   const [audioLoading, setAudioLoading] = useState({});
+  const [audioError, setAudioError] = useState({});
   
   const versesContainerRef = useRef(null);
+  const audioRef = useRef(null);
 
   const availableTranslations = [
     { id: 'en.sahih', name: 'Sahih International' },
@@ -71,6 +73,14 @@ export default function QuranBrowser() {
     loadBookmarks();
     loadFavorites();
     loadRecentSurahs();
+    
+    // Cleanup audio on unmount
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.src = '';
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -135,6 +145,13 @@ export default function QuranBrowser() {
     setVerses([]);
     setShowScrollTop(false);
     
+    // Stop any playing audio
+    if (currentAudio) {
+      currentAudio.pause();
+      setAudioPlaying(null);
+      setCurrentAudio(null);
+    }
+    
     try {
       const response = await fetch(`${API_BASE}/surah/${surahNumber}/editions/quran-uthmani,${selectedTranslation}`);
       const data = await response.json();
@@ -144,16 +161,25 @@ export default function QuranBrowser() {
         const englishEdition = data.data.find(ed => ed.edition?.identifier === selectedTranslation);
         const surahInfo = arabicEdition || data.data[0];
         
-        const versesList = surahInfo.ayahs.map((ayah, index) => ({
-          number: ayah.numberInSurah,
-          arabic: ayah.text,
-          translation: englishEdition?.ayahs[index]?.text || 'Translation loading...',
-          juz: ayah.juz,
-          page: ayah.page,
-          manzil: ayah.manzil,
-          sajda: ayah.sajda,
-          audioUrl: `https://cdn.islamic.network/quran/audio/128/${selectedReciter}/${surahNumber.toString().padStart(3, '0')}${ayah.numberInSurah.toString().padStart(3, '0')}.mp3`
-        }));
+        // Get the selected reciter's base URL
+        const reciter = reciters.find(r => r.id === selectedReciter) || reciters[0];
+        
+        const versesList = surahInfo.ayahs.map((ayah, index) => {
+          // Format: 001001.mp3 for Surah 1, Verse 1
+          const paddedSurah = surahNumber.toString().padStart(3, '0');
+          const paddedVerse = ayah.numberInSurah.toString().padStart(3, '0');
+          
+          return {
+            number: ayah.numberInSurah,
+            arabic: ayah.text,
+            translation: englishEdition?.ayahs[index]?.text || 'Translation loading...',
+            juz: ayah.juz,
+            page: ayah.page,
+            manzil: ayah.manzil,
+            sajda: ayah.sajda,
+            audioUrl: `${reciter.baseUrl}${paddedSurah}${paddedVerse}.mp3`
+          };
+        });
         
         setSelectedSurah({
           number: surahInfo.number,
@@ -304,6 +330,7 @@ export default function QuranBrowser() {
     });
     
     try {
+      // Try Ibn Kathir tafsir first
       const response = await fetch(`${API_BASE}/tafsir/169/${surahNumber}/${verseNumber}`);
       const data = await response.json();
       
@@ -314,11 +341,23 @@ export default function QuranBrowser() {
           loading: false 
         }));
       } else {
-        setShowTafsir(prev => ({ 
-          ...prev, 
-          text: 'Tafsir not available for this verse.',
-          loading: false 
-        }));
+        // Fallback to another tafsir
+        const fallbackResponse = await fetch(`${API_BASE}/tafsir/168/${surahNumber}/${verseNumber}`);
+        const fallbackData = await fallbackResponse.json();
+        
+        if (fallbackData.code === 200 && fallbackData.data) {
+          setShowTafsir(prev => ({ 
+            ...prev, 
+            text: fallbackData.data.text,
+            loading: false 
+          }));
+        } else {
+          setShowTafsir(prev => ({ 
+            ...prev, 
+            text: 'Tafsir not available for this verse.',
+            loading: false 
+          }));
+        }
       }
     } catch (error) {
       setShowTafsir(prev => ({ 
@@ -361,23 +400,32 @@ export default function QuranBrowser() {
     // Stop current audio
     if (currentAudio) {
       currentAudio.pause();
+      setCurrentAudio(null);
     }
+    
+    // Clear previous error for this verse
+    setAudioError(prev => ({ ...prev, [key]: false }));
     
     // Set loading state
     setAudioLoading(prev => ({ ...prev, [key]: true }));
     
     try {
-      const audio = new Audio(audioUrl);
+      const audio = new Audio();
       
       audio.oncanplaythrough = () => {
         setAudioLoading(prev => ({ ...prev, [key]: false }));
-        audio.play();
+        audio.play().catch(err => {
+          console.error('Play error:', err);
+          setAudioError(prev => ({ ...prev, [key]: true }));
+          toast.error('Could not play audio');
+        });
         setCurrentAudio(audio);
         setAudioPlaying(key);
       };
       
       audio.onerror = () => {
         setAudioLoading(prev => ({ ...prev, [key]: false }));
+        setAudioError(prev => ({ ...prev, [key]: true }));
         toast.error('Audio not available for this verse');
       };
       
@@ -386,9 +434,12 @@ export default function QuranBrowser() {
         setCurrentAudio(null);
       };
       
+      audio.src = audioUrl;
       audio.load();
+      
     } catch (error) {
       setAudioLoading(prev => ({ ...prev, [key]: false }));
+      setAudioError(prev => ({ ...prev, [key]: true }));
       toast.error('Failed to load audio');
     }
   };
@@ -411,7 +462,7 @@ export default function QuranBrowser() {
     
     toast.success(`🎧 Playing full Surah ${selectedSurah.englishName}`);
     
-    // Play first verse, then chain the rest
+    // Play verses sequentially
     let currentIndex = 0;
     
     const playNext = () => {
@@ -425,11 +476,17 @@ export default function QuranBrowser() {
         };
         
         audio.onerror = () => {
+          console.error(`Error playing verse ${verse.number}`);
           currentIndex++;
           playNext();
         };
         
-        audio.play();
+        audio.play().catch(err => {
+          console.error('Play error:', err);
+          currentIndex++;
+          playNext();
+        });
+        
         setCurrentAudio(audio);
         setAudioPlaying(fullSurahKey);
       } else {
@@ -819,11 +876,17 @@ export default function QuranBrowser() {
                         </span>
                         <button
                           onClick={() => handlePlayAudio(selectedSurah.number, verse.number, verse.audioUrl)}
-                          className="p-1.5 rounded-full bg-white/5 hover:bg-cyan-500/20 transition-colors relative"
+                          className={`p-1.5 rounded-full transition-colors relative ${
+                            audioError[`${selectedSurah.number}_${verse.number}`] 
+                              ? 'bg-red-500/20 hover:bg-red-500/30' 
+                              : 'bg-white/5 hover:bg-cyan-500/20'
+                          }`}
                           disabled={audioLoading[`${selectedSurah.number}_${verse.number}`]}
                         >
                           {audioLoading[`${selectedSurah.number}_${verse.number}`] ? (
                             <FiLoader size={11} className="text-cyan-400 animate-spin" />
+                          ) : audioError[`${selectedSurah.number}_${verse.number}`] ? (
+                            <FiVolumeX size={11} className="text-red-400" />
                           ) : audioPlaying === `${selectedSurah.number}_${verse.number}` ? (
                             <FiPause size={11} className="text-cyan-400" />
                           ) : (
