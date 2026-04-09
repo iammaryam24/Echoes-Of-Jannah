@@ -758,7 +758,7 @@ export default function SpiritualDNA() {
       {activeSection === 'prophets' && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="glass-card p-8 text-center bg-gradient-to-r from-aurora/20 via-divine/20 to-aurora/20">
-            <div className="text-7xl mb-4">📖✨</div>
+            <div className="text-7xl mb-4">📖</div>
             <h2 className="text-3xl font-bold text-white mb-3">Stories of the Prophets</h2>
             <p className="text-gray-300 max-w-2xl mx-auto">Discover the inspiring stories of Allah's messengers - their trials, triumphs, and timeless lessons</p>
           </div>
