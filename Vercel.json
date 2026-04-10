@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/auth/login-url",
+      "dest": "/api/auth/login-url"
+    },
+    {
+      "src": "/api/auth/exchange",
+      "dest": "/api/auth/exchange"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
+}
