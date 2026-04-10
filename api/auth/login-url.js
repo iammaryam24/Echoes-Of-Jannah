@@ -1,3 +1,7 @@
+// api/auth/login-url.js
+// Vercel Serverless Function - Generates OAuth Login URL
+// DO NOT commit secrets to GitHub! Use environment variables in production.
+
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -16,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Your credentials
+  // Your Quran Foundation credentials (Pre-Production for testing)
   const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
   const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
   const AUTH_BASE_URL = 'https://prelive-oauth2.quran.foundation';
@@ -40,7 +44,7 @@ export default async function handler(req, res) {
   const state = randomString(16);
   const nonce = randomString(16);
 
-  // Store PKCE data in memory (for serverless, use a global store)
+  // Store PKCE data in global memory (for serverless)
   if (!global.__oauthStore) {
     global.__oauthStore = {};
   }
@@ -66,5 +70,6 @@ export default async function handler(req, res) {
   });
 
   console.log(`[API] Generated login URL for state: ${state.substring(0, 8)}`);
-  res.status(200).json({ url: authUrl });
+  
+  return res.status(200).json({ url: authUrl });
 }
