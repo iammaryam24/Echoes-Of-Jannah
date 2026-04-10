@@ -1,4 +1,3 @@
-// src/contexts/QuranAuthContext.jsx
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
 // IMPORTANT: Empty string means use same domain (Vercel serverless functions)
