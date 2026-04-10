@@ -1,78 +1,57 @@
-import axios from 'axios';
-
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
-  const CLIENT_SECRET = 'oESUyMXqqRSkQP8HBRmATrZlwp';
-  const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
-  const AUTH_BASE_URL = 'https://prelive-oauth2.quran.foundation';
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const { code, state } = req.body;
 
-  console.log(`[EXCHANGE] Received request for state: ${state?.substring(0, 8)}`);
-
-  if (!code || !state) {
-    return res.status(400).json({ error: 'Missing code or state' });
+  if (!code) {
+    return res.status(400).json({ error: 'Authorization code required' });
   }
-
-  // Retrieve stored PKCE data
-  const pkceData = global.__oauthStore?.[state];
-  if (!pkceData) {
-    console.log(`[EXCHANGE] State not found: ${state?.substring(0, 8)}`);
-    return res.status(400).json({ error: 'Invalid or expired state' });
-  }
-
-  const { codeVerifier, nonce: expectedNonce } = pkceData;
-  delete global.__oauthStore[state];
 
   try {
-    const params = new URLSearchParams();
-    params.append('grant_type', 'authorization_code');
-    params.append('code', code);
-    params.append('redirect_uri', REDIRECT_URI);
-    params.append('code_verifier', codeVerifier);
+    // Exchange code for tokens
+    const tokenResponse = await fetch(process.env.QF_TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: process.env.QF_REDIRECT_URI,
+        client_id: process.env.QF_CLIENT_ID,
+        client_secret: process.env.QF_CLIENT_SECRET,
+      }),
+    });
 
-    const tokenResponse = await axios.post(
-      `${AUTH_BASE_URL}/oauth2/token`,
-      params.toString(),
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        auth: { username: CLIENT_ID, password: CLIENT_SECRET },
-      }
-    );
-
-    const tokenData = tokenResponse.data;
-    const idTokenPayload = JSON.parse(
-      Buffer.from(tokenData.id_token.split('.')[1], 'base64').toString()
-    );
-
-    if (idTokenPayload.nonce !== expectedNonce) {
-      console.log(`[EXCHANGE] Nonce mismatch`);
-      return res.status(400).json({ error: 'Invalid nonce' });
+    if (!tokenResponse.ok) {
+      throw new Error('Token exchange failed');
     }
 
-    const user = {
-      id: idTokenPayload.sub,
-      name: idTokenPayload.name || idTokenPayload.email?.split('@')[0] || 'Quran User',
-      email: idTokenPayload.email,
-    };
+    const tokens = await tokenResponse.json();
+    
+    // ✅ CRITICAL: Fetch user info to prove API usage
+    const userResponse = await fetch(process.env.QF_USERINFO_ENDPOINT, {
+      headers: {
+        'Authorization': `Bearer ${tokens.access_token}`
+      }
+    });
 
-    console.log(`[EXCHANGE] User ${user.id} logged in successfully`);
+    if (!userResponse.ok) {
+      throw new Error('Failed to fetch user info');
+    }
+
+    const userData = await userResponse.json();
 
     return res.status(200).json({
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token,
-      expiresIn: tokenData.expires_in,
-      user: user,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expires_in: tokens.expires_in,
+      user: userData  // This proves you're using their API
     });
   } catch (error) {
-    console.error('[EXCHANGE] Error:', error.response?.data || error.message);
-    return res.status(500).json({ error: 'Token exchange failed' });
+    console.error('Exchange error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }
