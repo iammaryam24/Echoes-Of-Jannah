@@ -1,3 +1,4 @@
+// api/auth/login-url.js
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -14,11 +15,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // ============================================
+  // YOUR QURAN FOUNDATION CREDENTIALS (Pre-Production)
+  // ============================================
   const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
   const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
   const AUTH_BASE_URL = 'https://prelive-oauth2.quran.foundation';
-  const SCOPES = 'openid offline_access';
+  const SCOPES = 'openid offline_access user collection bookmark reading_session preference goal streak';
 
+  // PKCE helper functions
   function generatePkcePair() {
     const codeVerifier = crypto.randomBytes(32).toString('base64url');
     const codeChallenge = crypto
@@ -37,12 +42,12 @@ export default async function handler(req, res) {
   const state = randomString(16);
   const nonce = randomString(16);
 
-  // Store PKCE data
+  // Store PKCE data in memory
   if (!global.__oauthStore) {
     global.__oauthStore = {};
   }
   
-  // Clean up old entries
+  // Clean up old entries (older than 5 minutes)
   Object.keys(global.__oauthStore).forEach(key => {
     if (global.__oauthStore[key]?.createdAt < Date.now() - 5 * 60 * 1000) {
       delete global.__oauthStore[key];
@@ -51,7 +56,7 @@ export default async function handler(req, res) {
   
   global.__oauthStore[state] = { codeVerifier, nonce, createdAt: Date.now() };
 
-  // Build auth URL
+  // Build the authorization URL
   const authUrl = `${AUTH_BASE_URL}/oauth2/auth?` + new URLSearchParams({
     response_type: 'code',
     client_id: CLIENT_ID,
