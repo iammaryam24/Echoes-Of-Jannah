@@ -1,6 +1,4 @@
 // api/auth/login-url.js
-// Vercel Serverless Function - Generates OAuth Login URL
-
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
@@ -17,12 +15,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Your Quran Foundation credentials (Pre-Production)
   const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
   const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
   const AUTH_BASE_URL = 'https://prelive-oauth2.quran.foundation';
 
-  // PKCE helper functions
   function generatePkcePair() {
     const codeVerifier = crypto.randomBytes(32).toString('base64url');
     const codeChallenge = crypto
@@ -36,25 +32,21 @@ export default async function handler(req, res) {
     return crypto.randomBytes(bytes).toString('hex');
   }
 
-  // Generate PKCE values
   const { codeVerifier, codeChallenge } = generatePkcePair();
   const state = randomString(16);
   const nonce = randomString(16);
 
-  // Store PKCE data
   if (!global.__oauthStore) {
     global.__oauthStore = {};
   }
   global.__oauthStore[state] = { codeVerifier, nonce, createdAt: Date.now() };
 
-  // Clean up old entries
   Object.keys(global.__oauthStore).forEach(key => {
     if (global.__oauthStore[key]?.createdAt < Date.now() - 5 * 60 * 1000) {
       delete global.__oauthStore[key];
     }
   });
 
-  // Build the authorization URL
   const authUrl = `${AUTH_BASE_URL}/oauth2/auth?` + new URLSearchParams({
     response_type: 'code',
     client_id: CLIENT_ID,
@@ -66,7 +58,5 @@ export default async function handler(req, res) {
     code_challenge_method: 'S256',
   });
 
-  console.log(`[API] Login URL generated for state: ${state.substring(0, 8)}`);
-  
   return res.status(200).json({ url: authUrl });
 }
