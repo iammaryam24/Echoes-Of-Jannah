@@ -1,3 +1,4 @@
+// src/pages/AuthCallback.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuranAuth } from '../contexts/QuranAuthContext';
@@ -6,7 +7,7 @@ export default function AuthCallback() {
     const location = useLocation();
     const navigate = useNavigate();
     const { handleAuthCallback, isLoading, error } = useQuranAuth();
-    const [status, setStatus] = useState('Connecting to Quran Foundation...');
+    const [status, setStatus] = useState('Completing authentication...');
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -14,19 +15,21 @@ export default function AuthCallback() {
         const state = params.get('state');
         const errorParam = params.get('error');
 
+        console.log('Callback received:', { code, state, errorParam });
+
         if (errorParam) {
-            setStatus(`❌ Authentication failed`);
+            setStatus(`❌ Authentication failed: ${errorParam}`);
             setTimeout(() => navigate('/'), 3000);
             return;
         }
 
         if (!code || !state) {
-            setStatus('❌ Invalid callback');
+            setStatus('❌ Invalid callback. Missing authorization code.');
             setTimeout(() => navigate('/'), 3000);
             return;
         }
 
-        setStatus('🔐 Authenticating...');
+        setStatus('🔐 Exchanging code for secure access...');
         handleAuthCallback(code, state);
     }, [location, handleAuthCallback, navigate]);
 
@@ -37,7 +40,10 @@ export default function AuthCallback() {
                     <div className="text-6xl mb-4">⚠️</div>
                     <h2 className="text-xl font-semibold text-red-400 mb-2">Login Failed</h2>
                     <p className="text-gray-300 text-sm">{error}</p>
-                    <button onClick={() => navigate('/')} className="mt-4 px-5 py-2 bg-gradient-to-r from-amber-500 to-pink-500 rounded-xl text-sm font-medium">
+                    <button 
+                        onClick={() => navigate('/')}
+                        className="mt-4 px-5 py-2 bg-gradient-to-r from-amber-500 to-pink-500 rounded-xl text-sm font-medium"
+                    >
                         Return Home
                     </button>
                 </div>
