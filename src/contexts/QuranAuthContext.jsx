@@ -1,6 +1,9 @@
+// src/contexts/QuranAuthContext.jsx
+// Quran Foundation OAuth 2.0 Authentication Context
+
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
-// IMPORTANT: Empty string means use same domain (Vercel serverless functions)
+// Empty string means use same domain (Vercel serverless functions)
 const API_BASE_URL = '';
 
 const QuranAuthContext = createContext();
