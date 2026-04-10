@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
+// UPDATED API URLs - NO /auth/ folder
 const API_BASE_URL = '';
 
 const QuranAuthContext = createContext();
@@ -29,12 +30,14 @@ export const QuranAuthProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login-url`);
+      // UPDATED URL - no /auth/
+      const response = await fetch(`${API_BASE_URL}/api/login-url`);
       if (!response.ok) throw new Error('Failed to get login URL');
       const { url } = await response.json();
       localStorage.setItem('qf_redirect_path', window.location.pathname);
       window.location.href = url;
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.message);
       setIsLoading(false);
     }
@@ -42,21 +45,31 @@ export const QuranAuthProvider = ({ children }) => {
 
   const handleAuthCallback = useCallback(async (code, state) => {
     setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
+      // UPDATED URL - no /auth/
+      const response = await fetch(`${API_BASE_URL}/api/exchange`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, state }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Token exchange failed');
+      }
+
       const data = await response.json();
       setUser(data.user);
       setAccessToken(data.accessToken);
       localStorage.setItem('qf_user', JSON.stringify(data.user));
       localStorage.setItem('qf_access_token', data.accessToken);
+
       const redirectPath = localStorage.getItem('qf_redirect_path') || '/';
       localStorage.removeItem('qf_redirect_path');
       window.location.href = redirectPath;
     } catch (err) {
+      console.error('Callback error:', err);
       setError(err.message);
       setIsLoading(false);
     }
