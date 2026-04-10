@@ -5,7 +5,7 @@ import { useQuranAuth } from '../contexts/QuranAuthContext';
 export default function AuthCallback() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { handleAuthCallback, isLoading, error } = useQuranAuth();
+  const { exchangeCodeForTokens, isLoading, error } = useQuranAuth();
   const [status, setStatus] = useState('Processing...');
 
   useEffect(() => {
@@ -20,8 +20,8 @@ export default function AuthCallback() {
     }
 
     setStatus('Signing you in...');
-    handleAuthCallback(code, state);
-  }, [location, handleAuthCallback, navigate]);
+    exchangeCodeForTokens(code, state);
+  }, [location, exchangeCodeForTokens, navigate]);
 
   if (error) {
     return (
