@@ -15,28 +15,21 @@ export default async function handler(req, res) {
 
   const { code, state } = req.body;
 
+  console.log(`[EXCHANGE] Received request for state: ${state?.substring(0, 8)}`);
+
   if (!code || !state) {
     return res.status(400).json({ error: 'Missing code or state' });
   }
 
-  // ✅ READ FROM COOKIES
-  const cookies = req.headers.cookie || '';
-  const getCookie = (name) => {
-    const match = cookies.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? match[2] : null;
-  };
-
-  const storedState = getCookie('oauth_state');
-  const codeVerifier = getCookie('oauth_code_verifier');
-  const expectedNonce = getCookie('oauth_nonce');
-
-  if (!storedState || !codeVerifier || !expectedNonce) {
-    return res.status(400).json({ error: 'Missing session data' });
+  // Retrieve stored PKCE data
+  const pkceData = global.__oauthStore?.[state];
+  if (!pkceData) {
+    console.log(`[EXCHANGE] State not found: ${state?.substring(0, 8)}`);
+    return res.status(400).json({ error: 'Invalid or expired state' });
   }
 
-  if (state !== storedState) {
-    return res.status(400).json({ error: 'Invalid state' });
-  }
+  const { codeVerifier, nonce: expectedNonce } = pkceData;
+  delete global.__oauthStore[state];
 
   try {
     const params = new URLSearchParams();
@@ -45,37 +38,41 @@ export default async function handler(req, res) {
     params.append('redirect_uri', REDIRECT_URI);
     params.append('code_verifier', codeVerifier);
 
-    const tokenResponse = await axios.post(`${AUTH_BASE_URL}/oauth2/token`, params.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      auth: { username: CLIENT_ID, password: CLIENT_SECRET },
-    });
+    const tokenResponse = await axios.post(
+      `${AUTH_BASE_URL}/oauth2/token`,
+      params.toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        auth: { username: CLIENT_ID, password: CLIENT_SECRET },
+      }
+    );
 
-    const idTokenPayload = JSON.parse(Buffer.from(tokenResponse.data.id_token.split('.')[1], 'base64').toString());
+    const tokenData = tokenResponse.data;
+    const idTokenPayload = JSON.parse(
+      Buffer.from(tokenData.id_token.split('.')[1], 'base64').toString()
+    );
 
     if (idTokenPayload.nonce !== expectedNonce) {
+      console.log(`[EXCHANGE] Nonce mismatch`);
       return res.status(400).json({ error: 'Invalid nonce' });
     }
 
-    // ✅ CLEAR COOKIES
-    res.setHeader('Set-Cookie', [
-      'oauth_state=; Path=/; Max-Age=0',
-      'oauth_code_verifier=; Path=/; Max-Age=0',
-      'oauth_nonce=; Path=/; Max-Age=0'
-    ]);
-
     const user = {
       id: idTokenPayload.sub,
-      name: idTokenPayload.name || 'Quran User',
+      name: idTokenPayload.name || idTokenPayload.email?.split('@')[0] || 'Quran User',
       email: idTokenPayload.email,
     };
 
+    console.log(`[EXCHANGE] User ${user.id} logged in successfully`);
+
     return res.status(200).json({
-      accessToken: tokenResponse.data.access_token,
-      refreshToken: tokenResponse.data.refresh_token,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      expiresIn: tokenData.expires_in,
       user: user,
     });
   } catch (error) {
-    console.error('Exchange failed:', error.response?.data || error.message);
+    console.error('[EXCHANGE] Error:', error.response?.data || error.message);
     return res.status(500).json({ error: 'Token exchange failed' });
   }
 }
