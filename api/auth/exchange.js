@@ -1,7 +1,8 @@
 // api/auth/exchange.js
 // Vercel Serverless Function - Exchanges code for tokens
+// DO NOT commit secrets to GitHub! Use environment variables in production.
 
-import axios from 'axios';  // 👈 ADD THIS LINE AT THE TOP
+import axios from 'axios';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -19,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Your Quran Foundation credentials
+  // Your Quran Foundation credentials (Pre-Production for testing)
   const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
   const CLIENT_SECRET = 'oESUyMXqqRSkQP8HBRmATrZlwp';
   const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
