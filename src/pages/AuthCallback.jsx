@@ -5,13 +5,16 @@ import { useQuranAuth } from '../contexts/QuranAuthContext';
 export default function AuthCallback() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { exchangeCodeForTokens, isLoading, error } = useQuranAuth();
+  const { handleAuthCallback, isLoading, error } = useQuranAuth();
   const [status, setStatus] = useState('Processing...');
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const code = params.get('code');
     const state = params.get('state');
+
+    console.log('[CALLBACK] Received code:', code?.substring(0, 20));
+    console.log('[CALLBACK] Received state:', state?.substring(0, 20));
 
     if (!code || !state) {
       setStatus('Invalid callback');
@@ -20,8 +23,8 @@ export default function AuthCallback() {
     }
 
     setStatus('Signing you in...');
-    exchangeCodeForTokens(code, state);
-  }, [location, exchangeCodeForTokens, navigate]);
+    handleAuthCallback(code, state);
+  }, [location, handleAuthCallback, navigate]);
 
   if (error) {
     return (
