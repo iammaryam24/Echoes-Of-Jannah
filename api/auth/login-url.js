@@ -1,6 +1,5 @@
 // api/auth/login-url.js
 // Vercel Serverless Function - Generates OAuth Login URL
-// DO NOT commit secrets to GitHub! Use environment variables in production.
 
 import crypto from 'crypto';
 
@@ -10,17 +9,15 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // Only allow GET requests
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Your Quran Foundation credentials (Pre-Production for testing)
+  // Your Quran Foundation credentials (Pre-Production)
   const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
   const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
   const AUTH_BASE_URL = 'https://prelive-oauth2.quran.foundation';
@@ -44,13 +41,13 @@ export default async function handler(req, res) {
   const state = randomString(16);
   const nonce = randomString(16);
 
-  // Store PKCE data in global memory (for serverless)
+  // Store PKCE data
   if (!global.__oauthStore) {
     global.__oauthStore = {};
   }
   global.__oauthStore[state] = { codeVerifier, nonce, createdAt: Date.now() };
 
-  // Clean up old entries (older than 5 minutes)
+  // Clean up old entries
   Object.keys(global.__oauthStore).forEach(key => {
     if (global.__oauthStore[key]?.createdAt < Date.now() - 5 * 60 * 1000) {
       delete global.__oauthStore[key];
@@ -69,7 +66,7 @@ export default async function handler(req, res) {
     code_challenge_method: 'S256',
   });
 
-  console.log(`[API] Generated login URL for state: ${state.substring(0, 8)}`);
+  console.log(`[API] Login URL generated for state: ${state.substring(0, 8)}`);
   
   return res.status(200).json({ url: authUrl });
 }
