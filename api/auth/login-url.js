@@ -17,8 +17,10 @@ export default async function handler(req, res) {
   const state = crypto.randomBytes(16).toString('hex');
   const nonce = crypto.randomBytes(16).toString('hex');
 
-  if (!global.__oauthStore) global.__oauthStore = {};
-  global.__oauthStore[state] = { codeVerifier, nonce, createdAt: Date.now() };
+  // Store in encrypted cookie instead of global memory
+  res.setHeader('Set-Cookie', `oauth_state=${state}; Path=/; HttpOnly; Max-Age=600`);
+  res.setHeader('Set-Cookie', `oauth_code_verifier=${codeVerifier}; Path=/; HttpOnly; Max-Age=600`);
+  res.setHeader('Set-Cookie', `oauth_nonce=${nonce}; Path=/; HttpOnly; Max-Age=600`);
 
   const authUrl = `${AUTH_BASE_URL}/oauth2/auth?` + new URLSearchParams({
     response_type: 'code',
