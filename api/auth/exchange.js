@@ -1,3 +1,7 @@
+// api/auth/exchange.js
+// Vercel Serverless Function - Exchanges code for tokens
+// DO NOT commit secrets to GitHub! Use environment variables in production.
+
 import axios from 'axios';
 
 export default async function handler(req, res) {
@@ -16,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Your credentials
+  // Your Quran Foundation credentials (Pre-Production for testing)
   const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
   const CLIENT_SECRET = 'oESUyMXqqRSkQP8HBRmATrZlwp';
   const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
@@ -83,7 +87,7 @@ export default async function handler(req, res) {
     console.log(`[API] User ${user.id} logged in successfully`);
 
     // Return tokens and user info to frontend
-    res.status(200).json({
+    return res.status(200).json({
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       expiresIn: tokenData.expires_in,
@@ -91,6 +95,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('[API] Token exchange failed:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Token exchange failed' });
+    return res.status(500).json({ error: 'Token exchange failed' });
   }
 }
