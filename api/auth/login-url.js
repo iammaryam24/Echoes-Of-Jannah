@@ -12,18 +12,24 @@ export default async function handler(req, res) {
   const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
   const AUTH_BASE_URL = 'https://prelive-oauth2.quran.foundation';
 
+  // Generate PKCE values
   const codeVerifier = crypto.randomBytes(32).toString('base64url');
   const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
   const state = crypto.randomBytes(16).toString('hex');
   const nonce = crypto.randomBytes(16).toString('hex');
 
-  // ✅ STORE IN COOKIES (not global memory)
-  res.setHeader('Set-Cookie', [
-    `oauth_state=${state}; Path=/; HttpOnly; Max-Age=600; SameSite=Lax`,
-    `oauth_code_verifier=${codeVerifier}; Path=/; HttpOnly; Max-Age=600; SameSite=Lax`,
-    `oauth_nonce=${nonce}; Path=/; HttpOnly; Max-Age=600; SameSite=Lax`
-  ]);
+  // Store state for later verification
+  if (!global.__oauthStore) global.__oauthStore = {};
+  global.__oauthStore[state] = { codeVerifier, nonce, createdAt: Date.now() };
 
+  // Clean up old entries
+  Object.keys(global.__oauthStore).forEach(key => {
+    if (global.__oauthStore[key]?.createdAt < Date.now() - 5 * 60 * 1000) {
+      delete global.__oauthStore[key];
+    }
+  });
+
+  // Build OAuth URL
   const authUrl = `${AUTH_BASE_URL}/oauth2/auth?` + new URLSearchParams({
     response_type: 'code',
     client_id: CLIENT_ID,
@@ -35,5 +41,6 @@ export default async function handler(req, res) {
     code_challenge_method: 'S256',
   });
 
+  console.log(`[LOGIN] Generated URL for state: ${state.substring(0, 8)}`);
   return res.status(200).json({ url: authUrl });
 }
