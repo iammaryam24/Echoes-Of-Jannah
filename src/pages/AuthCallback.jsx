@@ -7,7 +7,7 @@ export default function AuthCallback() {
     const location = useLocation();
     const navigate = useNavigate();
     const { handleAuthCallback, isLoading, error } = useQuranAuth();
-    const [status, setStatus] = useState('Completing authentication...');
+    const [status, setStatus] = useState('Connecting to Quran Foundation...');
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -15,10 +15,11 @@ export default function AuthCallback() {
         const state = params.get('state');
         const errorParam = params.get('error');
 
-        console.log('Callback received:', { code, state, errorParam });
+        console.log('AuthCallback - Code:', code);
+        console.log('AuthCallback - State:', state);
 
         if (errorParam) {
-            setStatus(`❌ Authentication failed: ${errorParam}`);
+            setStatus(`❌ Authentication failed: ${decodeURIComponent(errorParam)}`);
             setTimeout(() => navigate('/'), 3000);
             return;
         }
