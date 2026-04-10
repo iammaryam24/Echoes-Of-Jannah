@@ -1,10 +1,7 @@
 // api/auth/exchange.js
-// Vercel Serverless Function - Exchanges code for tokens
-
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -25,12 +22,12 @@ export default async function handler(req, res) {
   const { code, state } = req.body;
 
   if (!code || !state) {
-    return res.status(400).json({ error: 'Missing code or state parameter' });
+    return res.status(400).json({ error: 'Missing code or state' });
   }
 
   const pkceData = global.__oauthStore?.[state];
   if (!pkceData) {
-    return res.status(400).json({ error: 'Invalid or expired state parameter' });
+    return res.status(400).json({ error: 'Invalid or expired state' });
   }
 
   const { codeVerifier, nonce: expectedNonce } = pkceData;
@@ -48,21 +45,16 @@ export default async function handler(req, res) {
       params.toString(),
       {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        auth: {
-          username: CLIENT_ID,
-          password: CLIENT_SECRET,
-        },
+        auth: { username: CLIENT_ID, password: CLIENT_SECRET },
       }
     );
 
     const tokenData = tokenResponse.data;
-
     const idTokenPayload = JSON.parse(
       Buffer.from(tokenData.id_token.split('.')[1], 'base64').toString()
     );
 
     if (idTokenPayload.nonce !== expectedNonce) {
-      console.error('[API] Nonce mismatch!');
       return res.status(400).json({ error: 'Invalid nonce' });
     }
 
@@ -72,8 +64,6 @@ export default async function handler(req, res) {
       email: idTokenPayload.email,
     };
 
-    console.log(`[API] User ${user.id} logged in`);
-
     return res.status(200).json({
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
@@ -81,7 +71,7 @@ export default async function handler(req, res) {
       user: user,
     });
   } catch (error) {
-    console.error('[API] Token exchange failed:', error.response?.data || error.message);
+    console.error('Exchange failed:', error.response?.data || error.message);
     return res.status(500).json({ error: 'Token exchange failed' });
   }
 }
