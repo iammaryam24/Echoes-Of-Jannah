@@ -25,29 +25,31 @@ export const QuranAuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Step 1 & 2: User clicks Sign In -> Fetch login URL
   const login = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('[FRONTEND] Login initiated');
+      console.log('[1] Fetching login URL from /api/auth/login-url');
       const response = await fetch(`${API_BASE_URL}/api/auth/login-url`);
       if (!response.ok) throw new Error('Failed to get login URL');
       const { url } = await response.json();
-      console.log('[FRONTEND] Redirecting to:', url);
+      console.log('[2] Redirecting to Quran Foundation');
       localStorage.setItem('qf_redirect_path', window.location.pathname);
-      window.location.href = url;
+      window.location.href = url;  // Step 4
     } catch (err) {
-      console.error('[FRONTEND] Login error:', err);
+      console.error('Login error:', err);
       setError(err.message);
       setIsLoading(false);
     }
   }, []);
 
+  // Step 7: AuthCallback sends code to exchange
   const handleAuthCallback = useCallback(async (code, state) => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('[FRONTEND] Exchanging code for tokens');
+      console.log('[7] Exchanging code for tokens at /api/auth/exchange');
       const response = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,8 +62,9 @@ export const QuranAuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('[FRONTEND] User logged in:', data.user);
       
+      // Step 9: User is signed in!
+      console.log('[9] User signed in:', data.user);
       setUser(data.user);
       setAccessToken(data.accessToken);
       localStorage.setItem('qf_user', JSON.stringify(data.user));
@@ -71,7 +74,7 @@ export const QuranAuthProvider = ({ children }) => {
       localStorage.removeItem('qf_redirect_path');
       window.location.href = redirectPath;
     } catch (err) {
-      console.error('[FRONTEND] Callback error:', err);
+      console.error('Callback error:', err);
       setError(err.message);
       setIsLoading(false);
     }
