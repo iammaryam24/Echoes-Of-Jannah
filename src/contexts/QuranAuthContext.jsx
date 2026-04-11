@@ -29,9 +29,11 @@ export const QuranAuthProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('Login: Fetching URL from /api/auth/login-url');
       const response = await fetch(`${API_BASE_URL}/api/auth/login-url`);
       if (!response.ok) throw new Error('Failed to get login URL');
       const { url } = await response.json();
+      console.log('Login: Redirecting to', url);
       localStorage.setItem('qf_redirect_path', window.location.pathname);
       window.location.href = url;
     } catch (err) {
@@ -45,6 +47,7 @@ export const QuranAuthProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('Callback: Exchanging code for tokens');
       const response = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,6 +60,8 @@ export const QuranAuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
+      console.log('Callback: User logged in', data.user);
+      
       setUser(data.user);
       setAccessToken(data.accessToken);
       localStorage.setItem('qf_user', JSON.stringify(data.user));
