@@ -15,13 +15,28 @@ export default async function handler(req, res) {
 
   const { code, state } = req.body;
 
-  if (!code || !state) return res.status(400).json({ error: 'Missing code or state' });
+  if (!code || !state) {
+    return res.status(400).json({ error: 'Missing code or state' });
+  }
 
-  const pkceData = global.__oauthStore?.[state];
-  if (!pkceData) return res.status(400).json({ error: 'Invalid state' });
+  // READ FROM COOKIES
+  const cookies = req.headers.cookie || '';
+  const getCookie = (name) => {
+    const match = cookies.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? match[2] : null;
+  };
 
-  const { codeVerifier } = pkceData;
-  delete global.__oauthStore[state];
+  const storedState = getCookie('oauth_state');
+  const codeVerifier = getCookie('oauth_code_verifier');
+  const expectedNonce = getCookie('oauth_nonce');
+
+  if (!storedState || !codeVerifier || !expectedNonce) {
+    return res.status(400).json({ error: 'Missing session data' });
+  }
+
+  if (state !== storedState) {
+    return res.status(400).json({ error: 'Invalid state' });
+  }
 
   try {
     const params = new URLSearchParams();
@@ -37,11 +52,23 @@ export default async function handler(req, res) {
 
     const idTokenPayload = JSON.parse(Buffer.from(tokenResponse.data.id_token.split('.')[1], 'base64').toString());
 
+    if (idTokenPayload.nonce !== expectedNonce) {
+      return res.status(400).json({ error: 'Invalid nonce' });
+    }
+
+    // Clear cookies
+    res.setHeader('Set-Cookie', [
+      'oauth_state=; Path=/; Max-Age=0',
+      'oauth_code_verifier=; Path=/; Max-Age=0',
+      'oauth_nonce=; Path=/; Max-Age=0'
+    ]);
+
     return res.status(200).json({
       accessToken: tokenResponse.data.access_token,
       user: { id: idTokenPayload.sub, name: idTokenPayload.name || 'User', email: idTokenPayload.email }
     });
   } catch (error) {
+    console.error('Exchange failed:', error.response?.data || error.message);
     return res.status(500).json({ error: 'Token exchange failed' });
   }
 }
