@@ -58,9 +58,10 @@ export const QuranAuthProvider = ({ children }) => {
       const state = randomString();
       const nonce = randomString();
 
-      sessionStorage.setItem('oauth_code_verifier', codeVerifier);
-      sessionStorage.setItem('oauth_state', state);
-      sessionStorage.setItem('oauth_nonce', nonce);
+      // Store in localStorage (persists through redirect)
+      localStorage.setItem('oauth_code_verifier', codeVerifier);
+      localStorage.setItem('oauth_state', state);
+      localStorage.setItem('oauth_nonce', nonce);
       localStorage.setItem('qf_redirect_path', window.location.pathname);
 
       const params = new URLSearchParams({
@@ -86,12 +87,18 @@ export const QuranAuthProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const storedState = sessionStorage.getItem('oauth_state');
+      // Get from localStorage
+      const storedState = localStorage.getItem('oauth_state');
+      const codeVerifier = localStorage.getItem('oauth_code_verifier');
+      const expectedNonce = localStorage.getItem('oauth_nonce');
+
+      console.log('State from URL:', state);
+      console.log('Stored state:', storedState);
+
       if (state !== storedState) {
-        throw new Error('State mismatch');
+        throw new Error('State mismatch - possible CSRF attack');
       }
 
-      const codeVerifier = sessionStorage.getItem('oauth_code_verifier');
       const CLIENT_ID = '911c5b21-975f-4610-be81-f7158e7e6047';
       const CLIENT_SECRET = 'oESUyMXqqRSkQP8HBRmATrZlwp';
       const REDIRECT_URI = 'https://echoes-of-jannah.vercel.app/auth/callback';
@@ -118,14 +125,24 @@ export const QuranAuthProvider = ({ children }) => {
 
       const tokenData = await response.json();
       
-      setUser({ id: 'user', name: 'Quran User' });
+      // Decode ID token to get user info
+      const idTokenPayload = JSON.parse(atob(tokenData.id_token.split('.')[1]));
+      
+      const user = {
+        id: idTokenPayload.sub,
+        name: idTokenPayload.name || idTokenPayload.email?.split('@')[0] || 'Quran User',
+        email: idTokenPayload.email,
+      };
+
+      setUser(user);
       setAccessToken(tokenData.access_token);
-      localStorage.setItem('qf_user', JSON.stringify({ id: 'user', name: 'Quran User' }));
+      localStorage.setItem('qf_user', JSON.stringify(user));
       localStorage.setItem('qf_access_token', tokenData.access_token);
 
-      sessionStorage.removeItem('oauth_code_verifier');
-      sessionStorage.removeItem('oauth_state');
-      sessionStorage.removeItem('oauth_nonce');
+      // Cleanup
+      localStorage.removeItem('oauth_code_verifier');
+      localStorage.removeItem('oauth_state');
+      localStorage.removeItem('oauth_nonce');
 
       const redirectPath = localStorage.getItem('qf_redirect_path') || '/';
       localStorage.removeItem('qf_redirect_path');
